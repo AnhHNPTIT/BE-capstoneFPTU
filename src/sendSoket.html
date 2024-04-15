@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WebSocket Client</title>
+  </head>
+  <body>
+    <input type="text" id="messageInput" placeholder="Type your message..." />
+    <input type="text" id="id_customer" placeholder="Customer ID..." />
+    <input type="text" id="token" placeholder="Token..." />
+    <button onclick="sendMessage()">Send</button>
+
+    <script>
+      let token =
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY2MDRkMjU1YzIxM2RjNGE2YzA2ZTk5NyIsInJvbGUiOiJBRE1JTiIsImlhdCI6MTcxMTg0ODQ1MywiZXhwIjoxNzExODg4MDUzfQ.dmxrB5W6EnMY3VjIW04O3R7Yc3W2J-H9JIpjsytsEbI';
+      let ws = new WebSocket('ws://localhost:8000', {
+        query: { access_token: token },
+      });
+
+      ws.onopen = function () {
+        console.log('Connected to server');
+      };
+
+      async function sendMessage() {
+        const messageInput = document.getElementById('messageInput');
+        const message = messageInput.value.trim();
+        // if (!message) return;
+        console.log(33333333333333);
+        const idCustomer = document.getElementById('id_customer').value.trim();
+        const token = document.getElementById('token').value.trim();
+        // if (!idCustomer || !token) return;
+
+        const roomName = `customer_${idCustomer}`;
+
+        ws.on('user_online', function open() {
+          console.log('Connected to server');
+
+          // Gửi tin nhắn tới server
+          const data = {
+            roomName: 'customer_123', // Thay thế bằng tên phòng bạn muốn gửi tin nhắn
+            message: 'Hello from client',
+          };
+          ws.send(JSON.stringify(data));
+        });
+
+        ws.on('message', function incoming(data) {
+          console.log('Received message from server:', data);
+        });
+
+        ws.on('close', function close() {
+          console.log('Disconnected from server');
+        });
+
+        ws.on('error', function error(err) {
+          console.error('WebSocket error:', err);
+        });
+      }
+    </script>
+  </body>
+</html>
+
+
+
+const io = new Server(server, {
+    cors: {
+      origin: 'https://socketio.bloggernepal.com',
+      credentials: true
+    }
+  })
+  

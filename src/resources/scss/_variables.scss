@@ -1,0 +1,18 @@
+$red-color: red;
+$green-color: green;
+$blue-color: blue;
+$black-color: black;
+$white-color: white;
+$gray-color: gray;
+@media screen and (max-width: 480px) {
+   .test {
+      font-size: 16px;
+      background-color: red($color: #000000);
+   }
+}
+
+.container {
+   width: 100%;
+   max-width: 1200px;
+   margin: 0 auto;
+}
