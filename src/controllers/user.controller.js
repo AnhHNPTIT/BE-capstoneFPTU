@@ -13,6 +13,7 @@ const convertUtcToGmt7 = require('../helper/formatTimeZone');
 const user = {
     register_user: async (req, res) => {
         const resultValidator = validationResult(req);
+        console.log("resultValidator.isEmpty() =", resultValidator.isEmpty())
         if (!resultValidator.isEmpty()) {
             return res.status(402).send({ errors: resultValidator.array() })
         }
