@@ -839,7 +839,7 @@ describe("user", () => {
   });
 
   describe("getInformationDESIGNER", () => {
-    const { ObjectId } = require('mongoose').Types;
+    const { ObjectId } = require("mongoose").Types;
     const req = {
       params: {
         id: "designer123",
@@ -900,71 +900,88 @@ describe("user", () => {
     });
   });
 
-  describe('get_profile', () => {
-    const { ObjectId } = require('mongoose').Types;
+  describe("get_profile", () => {
+    const { ObjectId } = require("mongoose").Types;
     const req = {
-        dataToken: {
-            id: 'user123',
-            role: 'USER',
-        },
+      dataToken: {
+        id: "user123",
+        role: "USER",
+      },
     };
     const res = {
-        json: jest.fn(),
+      json: jest.fn(),
     };
 
     beforeEach(() => {
-        UserSchema.aggregate.mockReset();
-        res.json.mockClear();
+      UserSchema.aggregate.mockReset();
+      res.json.mockClear();
     });
 
-    it('should get user profile successfully', async () => {
-        const dataProfile = [{ /* mock user profile data */ }];
-        UserSchema.aggregate.mockResolvedValue(dataProfile);
+    it("should get user profile successfully", async () => {
+      const dataProfile = [
+        {
+          /* mock user profile data */
+        },
+      ];
+      UserSchema.aggregate.mockResolvedValue(dataProfile);
 
-        await user.get_profile(req, res);
+      await user.get_profile(req, res);
 
-        expect(UserSchema.aggregate).toHaveBeenCalledWith([
-            {
-                $match: {
-                    _id: ObjectId(req.dataToken.id),
-                }
-            },
-            {
-                $project: { password: 0 }
-            }
-        ]);
+      expect(UserSchema.aggregate).toHaveBeenCalledWith([
+        {
+          $match: {
+            _id: ObjectId(req.dataToken.id),
+          },
+        },
+        {
+          $project: { password: 0 },
+        },
+      ]);
 
-        expect(res.json).toHaveBeenCalledWith({ message: ' ', data: dataProfile });
+      expect(res.json).toHaveBeenCalledWith({
+        message: " ",
+        data: dataProfile,
+      });
     });
-});
+  });
 
-
-describe('update_user', () => {
-  const req = {
+  describe("update_user", () => {
+    const req = {
       dataToken: {
-          id: 'user123',
+        id: "user123",
       },
       body: {
-          image: 'image.jpg',
-          fullName: 'John Doe',
-          dob: '1990-01-01',
-          phoneNumber: '123456789',
-          email: 'john@example.com',
+        image: "image.jpg",
+        fullName: "John Doe",
+        dob: "1990-01-01",
+        phoneNumber: "123456789",
+        email: "john@example.com",
       },
-  };
-  const res = {
+    };
+    const res = {
       json: jest.fn(),
-  };
+    };
 
-  it('should update user information successfully', async () => {
+    it("should update user information successfully", async () => {
       await user.update_user(req, res);
 
       expect(UserSchema.findOneAndUpdate).toHaveBeenCalledWith(
-          { _id: req.dataToken.id },
-          { $set: { imageUser: req.body.image, fullName: req.body.fullName, dob: req.body.dob, phoneNumber: req.body.phoneNumber, email: req.body.email } }
+        { _id: req.dataToken.id },
+        {
+          $set: {
+            imageUser: req.body.image,
+            fullName: req.body.fullName,
+            dob: req.body.dob,
+            phoneNumber: req.body.phoneNumber,
+            email: req.body.email,
+          },
+        }
       );
 
-      expect(res.json).toHaveBeenCalledWith({ message: 'update thành công', data: {} });
+      expect(res.json).toHaveBeenCalledWith({
+        message: "update thành công",
+        data: {},
+      });
+    });
   });
-});
 });
