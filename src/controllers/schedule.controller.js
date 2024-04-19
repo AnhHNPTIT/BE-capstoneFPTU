@@ -45,7 +45,6 @@ const schedule = {
                 pendingDates
             });
         } catch (error) {
-            console.error(error);
             return res.status(500).json({ message: 'Đã xảy ra lỗi khi lấy danh sách các ngày bận của designer.' });
         }
     },

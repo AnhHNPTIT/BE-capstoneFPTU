@@ -183,7 +183,6 @@ const project = {
 
             return res.status(200).json({ message: 'Project deleted successfully', deletedProject });
         } catch (error) {
-            console.error('Error deleting project:', error);
             return res.status(500).json({ message: 'Internal server error' });
         }
     }
