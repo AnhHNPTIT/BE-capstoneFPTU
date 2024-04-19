@@ -511,6 +511,31 @@ describe("schedule", () => {
       expect(res.status).toHaveBeenCalledWith(404);
       expect(res.json).toHaveBeenCalledWith({ message: "No schedule found" });
     });
+
+    it("should handle errors and return a 500 status code with an error message", async () => {
+      const req = {
+        dataToken: { id: "designer_id" },
+        query: { timeWork: "2024-04-20" },
+      };
+      
+      // Mock the response object
+      const res = {
+        json: jest.fn(),
+        status: jest.fn().mockReturnThis(),
+      };
+
+      // Mock ScheduleSchema.find to throw an error
+      DesignerSchema.findOne = jest
+        .fn()
+        .mockRejectedValue(new Error("Database error"));
+
+      // Call the controller function
+      await schedule.getScheduleInfoByDesigner(req, res);
+
+      // Expectations
+      expect(res.status).toHaveBeenCalledWith(500);
+      expect(res.json).toHaveBeenCalledWith({ message: "Internal server error" });
+    });
   });
 
   describe("getScheduleInfoByCustomer", () => {
@@ -573,6 +598,52 @@ describe("schedule", () => {
           { _id: "schedule_id", designerId: "designer_id", workOn: false },
         ],
       });
+    });
+  });
+
+  describe("getAllListSchedule", () => {
+    it("should handle errors and return a 500 status code with an error message", async () => {
+      // Mock the response object
+      const res = {
+        json: jest.fn(),
+        status: jest.fn().mockReturnThis(),
+      };
+
+      // Mock ScheduleSchema.find to throw an error
+      ScheduleSchema.find = jest
+        .fn()
+        .mockRejectedValue(new Error("Database error"));
+
+      // Call the controller function
+      await schedule.getAllListSchedule({}, res);
+
+      // Expectations
+      expect(res.status).toHaveBeenCalledWith(500);
+      expect(res.json).toHaveBeenCalledWith({ message: "Server Error" });
+    });
+
+    it("should handle errors and return a 500 status code with an error message", async () => {
+      // Mock the request object
+      const req = {
+        dataToken: { id: "user_id" },
+      };
+
+      // Mock the response object
+      const res = {
+        json: jest.fn(),
+        status: jest.fn().mockReturnThis(),
+      };
+
+      // Mock ScheduleSchema.find function to throw an error
+      ScheduleSchema.find = jest
+        .fn()
+        .mockRejectedValue(new Error("Database error"));
+
+      // Call the controller function
+      await schedule.getAllListSchedule({}, res);
+
+      // Expectations
+      expect(res.status).toHaveBeenCalledWith(500);
     });
   });
 
@@ -660,6 +731,42 @@ describe("schedule", () => {
       expect(res.json).toHaveBeenCalledWith({
         message: "Đã xảy ra lỗi khi lấy thông tin đặt lịch",
       });
+    });
+  });
+
+  describe("searchListSchedule", () => {
+    it("should handle errors and return a 500 status code with an error message", async () => {
+      // Mock the request object
+      const req = {
+        body: {
+          time: "All",
+          designerName: "John Doe",
+          customerName: "Jane Doe",
+          startDate: "2024-04-01",
+          endDate: "2024-04-30",
+        },
+      };
+
+      // Mock the response object
+      const res = {
+        json: jest.fn(),
+        status: jest.fn().mockReturnThis(),
+      };
+
+      // Mock UserSchema.findOne and ScheduleSchema.find to throw an error
+      UserSchema.findOne = jest
+        .fn()
+        .mockRejectedValue(new Error("Database error"));
+      ScheduleSchema.find = jest
+        .fn()
+        .mockRejectedValue(new Error("Database error"));
+
+      // Call the controller function
+      await schedule.searchListSchedule(req, res);
+
+      // Expectations
+      expect(res.status).toHaveBeenCalledWith(500);
+      expect(res.json).toHaveBeenCalledWith({ message: "Server Error" });
     });
   });
 

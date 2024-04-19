@@ -95,7 +95,6 @@ const schedule = {
                 pendingDates
             });
         } catch (error) {
-            console.error(error);
             return res.status(500).json({ message: 'Đã xảy ra lỗi khi lấy danh sách các ngày bận của designer.' });
         }
     },
@@ -204,7 +203,6 @@ const schedule = {
                 }
             });
         } catch (error) {
-            console.error(error);
             return res.status(500).json({ message: "Internal server error" });
         }
     },
@@ -296,7 +294,6 @@ const schedule = {
 
             return res.json({ message: "Lấy thông tin đặt lịch thành công", data: schedules });
         } catch (error) {
-            console.error(error);
             return res.status(500).json({ message: 'Server Error' });
         }
     },
@@ -364,7 +361,6 @@ const schedule = {
             }));
             return res.json({ message: "Lấy thông tin đặt lịch thành công", data: schedules });
         } catch (error) {
-            console.error(error);
             return res.status(500).json({ message: 'Server Error' });
         }
     },
@@ -382,7 +378,6 @@ const schedule = {
             }, { new: true });
             return res.json({ message: "Cập nhật thông tin thành công" });
         } catch (error) {
-            console.error(error);
             return res.status(500).json({ message: 'Server Error' });
         }
     },
@@ -393,7 +388,6 @@ const schedule = {
             const schedule = await ScheduleSchema.find({ _id: ObjectId(scheduleId) });
             return res.json({ message: "Get thông tin thành công", data: schedule[0].timeWork });
         } catch (error) {
-            console.error(error);
             return res.status(500).json({ message: 'Server Error' });
         }
     }
