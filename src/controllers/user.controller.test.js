@@ -29,6 +29,7 @@ jest.mock("mongoose", () => ({
 
 // Mock the UserSchema and other models
 const UserSchema = {
+  find: jest.fn(),
   findOne: jest.fn(),
   findOneAndUpdate: jest.fn(),
   updateOne: jest.fn(),
@@ -43,6 +44,8 @@ const CustomerSchema = {
 const DesignerSchema = {
   save: jest.fn(),
   find: jest.fn(),
+  findOneAndUpdate: jest.fn(),
+  aggregate: jest.fn(),
 };
 
 const ScheduleSchema = {
@@ -295,6 +298,76 @@ describe("user", () => {
     });
   });
 
+  describe("search_list_user", () => {
+    const res = {
+      json: jest.fn(),
+    };
+
+    it("should return list of users matching search criteria with only startDate", async () => {
+      const req = {
+        body: {
+          userCode: "user123",
+          fullName: "John Doe",
+          role: "employee",
+          startDate: "2024-04-01",
+        },
+        dataToken: {
+          id: "",
+        },
+      };
+      // Mock the UserSchema.aggregate function
+      UserSchema.aggregate = jest.fn().mockResolvedValueOnce([
+        {
+          _id: "",
+          userCode: "user123",
+          fullName: "John Doe",
+          role: "employee",
+          createdAt: new Date(),
+        },
+      ]);
+
+      await user.search_list_user(req, res);
+
+      expect(UserSchema.aggregate).toHaveBeenCalled();
+      expect(res.json).toHaveBeenCalledWith({
+        message: "",
+        data: expect.any(Array),
+      });
+    });
+
+    it("should return list of users matching search criteria with only endDate", async () => {
+      const req = {
+        body: {
+          userCode: "user123",
+          fullName: "John Doe",
+          role: "employee",
+          endDate: "2024-04-01",
+        },
+        dataToken: {
+          id: "",
+        },
+      };
+      // Mock the UserSchema.aggregate function
+      UserSchema.aggregate = jest.fn().mockResolvedValueOnce([
+        {
+          _id: "",
+          userCode: "user123",
+          fullName: "John Doe",
+          role: "employee",
+          createdAt: new Date(),
+        },
+      ]);
+
+      await user.search_list_user(req, res);
+
+      expect(UserSchema.aggregate).toHaveBeenCalled();
+      expect(res.json).toHaveBeenCalledWith({
+        message: "",
+        data: expect.any(Array),
+      });
+    });
+  });
+
   describe("delete_user", () => {
     it("should delete user successfully", async () => {
       const req = {
@@ -395,4 +468,503 @@ describe("user", () => {
       expect(res.json).toHaveBeenCalledWith({ message: "Server error" });
     });
   });
+
+  describe("send_otp", () => {
+    const emailQueue = {
+      add: jest.fn(),
+    };
+    const req = {
+      body: {
+        email: "test@example.com",
+      },
+    };
+
+    const res = {
+      json: jest.fn(),
+      status: jest.fn().mockReturnThis(),
+    };
+
+    beforeEach(() => {
+      UserSchema.findOne.mockReset();
+      UserSchema.updateOne.mockReset();
+      emailQueue.add.mockReset();
+      res.json.mockClear();
+      res.status.mockClear();
+    });
+
+    it("should return message if user not found", async () => {
+      UserSchema.findOne.mockResolvedValue(null);
+
+      await user.send_otp(req, res);
+
+      expect(res.json).toHaveBeenCalledWith({
+        message: "Tài khoản của bạn không chính xác",
+      });
+    });
+
+    it("should send OTP email if user found", async () => {
+      const obj = { email: "test@example.com" };
+      UserSchema.findOne.mockResolvedValue(obj);
+      UserSchema.updateOne.mockResolvedValue({});
+
+      await user.send_otp(req, res);
+
+      expect(UserSchema.updateOne).toHaveBeenCalled();
+      expect(res.json).toHaveBeenCalledWith({
+        message: "Mã OTP đã được gửi tới email",
+      });
+    });
+
+    it("should return 500 if an error occurs", async () => {
+      UserSchema.findOne.mockRejectedValue(new Error("Database error"));
+
+      await user.send_otp(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(500);
+      expect(res.json).toHaveBeenCalledWith({ message: "Error error" });
+    });
+  });
+
+  describe("user.change_password_otp", () => {
+    const req = {
+      body: {
+        code_change_password: "12345",
+        email: "test@example.com",
+        passwordNew: "newpassword",
+      },
+    };
+
+    const res = {
+      json: jest.fn(),
+      status: jest.fn().mockReturnThis(),
+    };
+    const bcrypt = require("bcrypt");
+    jest.mock("bcrypt", () => ({
+      hashSync: jest.fn(),
+    }));
+
+    it("should return 400 if user not found or OTP incorrect", async () => {
+      UserSchema.findOne.mockResolvedValue(null);
+
+      await user.change_password_otp(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({
+        message: "Tài khoản  hoặc mã otp của bạn không chính xác",
+      });
+    });
+
+    it("should update password if user found and OTP correct", async () => {
+      const data = { email: "test@example.com" };
+      UserSchema.findOne.mockResolvedValue(data);
+      bcrypt.hashSync.mockReturnValue("hashedpassword");
+      UserSchema.updateOne.mockResolvedValue({});
+
+      await user.change_password_otp(req, res);
+
+      expect(bcrypt.hashSync).toHaveBeenCalledWith(req.body.passwordNew, 10);
+      expect(UserSchema.updateOne).toHaveBeenCalledWith(
+        { email: req.body.email },
+        { $set: { password: "hashedpassword", code_change_password: "" } }
+      );
+      expect(res.json).toHaveBeenCalledWith({
+        message: "Thay đổi mật khẩu thành công",
+      });
+    });
+
+    it("should return 500 if an error occurs", async () => {
+      UserSchema.findOne.mockRejectedValue(new Error("Database error"));
+
+      await user.change_password_otp(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(500);
+      expect(res.json).toHaveBeenCalledWith({ message: "Error error" });
+    });
+  });
+
+  describe("uploadFile", () => {
+    const reqWithFile = { file: { filename: "example.jpg" } };
+    const reqWithoutFile = { file: null };
+    const res = {
+      json: jest.fn(),
+    };
+
+    beforeEach(() => {
+      res.json.mockClear();
+    });
+
+    it("should return success response with filename if file is uploaded", async () => {
+      await user.uploadFile(reqWithFile, res);
+
+      expect(res.json).toHaveBeenCalledWith({
+        success: true,
+        filename: "example.jpg",
+      });
+    });
+
+    it("should return failure response if file is not uploaded", async () => {
+      await user.uploadFile(reqWithoutFile, res);
+
+      expect(res.json).toHaveBeenCalledWith({
+        success: false,
+        message: "File upload failed",
+      });
+    });
+  });
+
+  describe("uploadMultiFile", () => {
+    const files = [
+      { filename: "file1.jpg" },
+      { filename: "file2.png" },
+      { filename: "file3.txt" },
+    ];
+    const reqWithFiles = { files: files };
+    const reqWithoutFiles = { files: null };
+    const res = {
+      json: jest.fn(),
+    };
+
+    beforeEach(() => {
+      res.json.mockClear();
+    });
+
+    it("should return success response with file names if files are uploaded", async () => {
+      await user.uploadMultiFile(reqWithFiles, res);
+
+      expect(res.json).toHaveBeenCalledWith({
+        success: true,
+        fileNames: files,
+      });
+    });
+
+    it("should return failure response if files are not uploaded", async () => {
+      await user.uploadMultiFile(reqWithoutFiles, res);
+
+      expect(res.json).toHaveBeenCalledWith({
+        success: false,
+        message: "File upload failed",
+      });
+    });
+  });
+
+  describe("updateUser", () => {
+    const req = {
+      body: {
+        email: "test@example.com",
+        password: "newpassword",
+        isActive: true,
+        role: "user",
+      },
+    };
+    const res = {
+      json: jest.fn(),
+    };
+
+    const bcrypt = require("bcrypt");
+    jest.mock("bcrypt", () => ({
+      hashSync: jest.fn(),
+    }));
+
+    beforeEach(() => {
+      UserSchema.findOneAndUpdate.mockReset();
+      bcrypt.hashSync.mockReset();
+      res.json.mockClear();
+    });
+
+    it("should update user with hashed password, isActive, and role", async () => {
+      bcrypt.hashSync.mockReturnValue("hashedpassword");
+
+      await user.updateUser(req, res);
+
+      expect(bcrypt.hashSync).toHaveBeenCalledWith(req.body.password, 10);
+      expect(UserSchema.findOneAndUpdate).toHaveBeenCalledWith(
+        { email: req.body.email },
+        {
+          $set: {
+            password: "hashedpassword",
+            isActive: req.body.isActive,
+            role: req.body.role,
+          },
+        }
+      );
+      expect(res.json).toHaveBeenCalledWith({
+        success: false,
+        message: "Update success",
+      });
+    });
+  });
+
+  describe("get_list_for_role", () => {
+    const req = {
+      body: {
+        userCode: "user1",
+        fullName: "John Doe",
+        email: "john@example.com",
+        phoneNumber: "123456789",
+        flagGetUser: "CUSTOMER",
+        address: "123 Main St",
+        designfile: "file123",
+      },
+      dataToken: {
+        role: "ADMIN",
+      },
+    };
+    const res = {
+      json: jest.fn(),
+    };
+
+    beforeEach(() => {
+      UserSchema.aggregate.mockReset();
+      res.json.mockClear();
+    });
+
+    it("should return list of users based on ADMIN role and CUSTOMER flag", async () => {
+      // Mock data for aggregation result
+      const userList = [
+        {
+          /* mock user data */
+        },
+      ];
+      UserSchema.aggregate.mockResolvedValue(userList);
+
+      await user.get_list_for_role(req, res);
+
+      expect(UserSchema.aggregate).toHaveBeenCalled();
+      expect(res.json).toHaveBeenCalledWith({ message: "", data: userList });
+    });
+  });
+
+  describe("updateInformationDESIGNER", () => {
+    const req = {
+      dataToken: {
+        id: "user123",
+      },
+      body: {
+        imageDesigner: "image.jpg",
+        listImageProject: ["project1.jpg", "project2.jpg"],
+        skill: "Graphic Design",
+        designfile: "file123",
+        experience: "5 years",
+        description: "Graphic Designer",
+      },
+    };
+    const res = {
+      json: jest.fn(),
+    };
+
+    beforeEach(() => {
+      UserSchema.findOneAndUpdate.mockReset();
+      DesignerSchema.findOneAndUpdate.mockReset();
+      res.json.mockClear();
+    });
+
+    it("should update user information and designer information", async () => {
+      await user.updateInformationDESIGNER(req, res);
+
+      expect(UserSchema.findOneAndUpdate).toHaveBeenCalledWith(
+        { _id: req.dataToken.id },
+        {
+          $set: {
+            description: req.body.description,
+            imageUser: req.body.imageDesigner,
+          },
+        },
+        { new: true }
+      );
+
+      expect(DesignerSchema.findOneAndUpdate).toHaveBeenCalledWith(
+        { designerId: req.dataToken.id },
+        {
+          $set: {
+            skill: req.body.skill,
+            designfile: req.body.designfile,
+            experience: req.body.experience,
+            listImageProject: req.body.listImageProject,
+          },
+        },
+        { new: true }
+      );
+
+      expect(res.json).toHaveBeenCalledWith({
+        success: true,
+        message: "Update success",
+      });
+    });
+  });
+
+  describe("getDesignerInfo", () => {
+    const req = {
+      params: {
+        designerId: "designer123",
+      },
+    };
+    const res = {
+      json: jest.fn(),
+    };
+
+    beforeEach(() => {
+      res.json.mockClear();
+    });
+
+    it("should get designer info successfully", async () => {
+      const userInfo = [
+        {
+          /* mock user info */
+        },
+      ];
+      DesignerSchema.find.mockResolvedValue(userInfo);
+
+      await user.getDesignerInfo(req, res);
+
+      expect(DesignerSchema.find).toHaveBeenCalledWith({
+        designerId: req.params.designerId,
+      });
+      expect(res.json).toHaveBeenCalledWith({
+        success: true,
+        message: "Get user info successfully",
+        userInfo: userInfo[0],
+      });
+    });
+
+    it("should handle error if designer info is not found", async () => {
+      DesignerSchema.find.mockResolvedValue([]);
+
+      await user.getDesignerInfo(req, res);
+
+      expect(DesignerSchema.find).toHaveBeenCalledWith({
+        designerId: req.params.designerId,
+      });
+      expect(res.json).toHaveBeenCalled();
+    });
+  });
+
+  describe("getInformationDESIGNER", () => {
+    const { ObjectId } = require('mongoose').Types;
+    const req = {
+      params: {
+        id: "designer123",
+      },
+      dataToken: {
+        id: "user123",
+      },
+    };
+    const res = {
+      json: jest.fn(),
+    };
+
+    beforeEach(() => {
+      UserSchema.find.mockReset();
+      DesignerSchema.aggregate.mockReset();
+      res.json.mockClear();
+    });
+
+    it("should get designer information successfully", async () => {
+      const userInfo = [
+        {
+          /* mock user info */
+        },
+      ];
+      UserSchema.find.mockResolvedValue(userInfo);
+
+      const data = [
+        {
+          /* mock data */
+        },
+      ];
+      DesignerSchema.aggregate.mockResolvedValue(data);
+
+      await user.getInformationDESIGNER(req, res);
+
+      expect(UserSchema.find).toHaveBeenCalledWith({ _id: req.dataToken.id });
+      expect(DesignerSchema.aggregate).toHaveBeenCalledWith([
+        {
+          $match: {
+            _id: ObjectId(req.params.id),
+          },
+        },
+        {
+          $lookup: {
+            from: "users",
+            localField: "designerId",
+            foreignField: "_id",
+            as: "dataDesigner",
+          },
+        },
+      ]);
+
+      expect(res.json).toHaveBeenCalledWith({
+        success: true,
+        message: data,
+        userInfo: userInfo[0],
+      });
+    });
+  });
+
+  describe('get_profile', () => {
+    const { ObjectId } = require('mongoose').Types;
+    const req = {
+        dataToken: {
+            id: 'user123',
+            role: 'USER',
+        },
+    };
+    const res = {
+        json: jest.fn(),
+    };
+
+    beforeEach(() => {
+        UserSchema.aggregate.mockReset();
+        res.json.mockClear();
+    });
+
+    it('should get user profile successfully', async () => {
+        const dataProfile = [{ /* mock user profile data */ }];
+        UserSchema.aggregate.mockResolvedValue(dataProfile);
+
+        await user.get_profile(req, res);
+
+        expect(UserSchema.aggregate).toHaveBeenCalledWith([
+            {
+                $match: {
+                    _id: ObjectId(req.dataToken.id),
+                }
+            },
+            {
+                $project: { password: 0 }
+            }
+        ]);
+
+        expect(res.json).toHaveBeenCalledWith({ message: ' ', data: dataProfile });
+    });
+});
+
+
+describe('update_user', () => {
+  const req = {
+      dataToken: {
+          id: 'user123',
+      },
+      body: {
+          image: 'image.jpg',
+          fullName: 'John Doe',
+          dob: '1990-01-01',
+          phoneNumber: '123456789',
+          email: 'john@example.com',
+      },
+  };
+  const res = {
+      json: jest.fn(),
+  };
+
+  it('should update user information successfully', async () => {
+      await user.update_user(req, res);
+
+      expect(UserSchema.findOneAndUpdate).toHaveBeenCalledWith(
+          { _id: req.dataToken.id },
+          { $set: { imageUser: req.body.image, fullName: req.body.fullName, dob: req.body.dob, phoneNumber: req.body.phoneNumber, email: req.body.email } }
+      );
+
+      expect(res.json).toHaveBeenCalledWith({ message: 'update thành công', data: {} });
+  });
+});
 });
